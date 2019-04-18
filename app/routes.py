@@ -2,30 +2,23 @@ from flask import render_template, flash, redirect, url_for, request
 from werkzeug.urls import url_parse
 from app import db
 from app import app
-from app.forms import LoginForm, RegistrationForm, EditProfileForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, PostForm
 from flask_login import current_user, login_user, logout_user, login_required
-from app.models import User
+from app.models import User, Post
 from datetime import datetime
 
-@app.route('/')
-@app.route('/index')
+@app.route('/', method=['GET', 'POST'])
+@app.route('/index', method=['GET', 'POST'])
 @login_required
 def index():
-    user = {'username': 'Шкила Сосёт'}
-    posts = [
-        {
-            'author': {'username': 'John'},
-            'body': 'Beautiful day in Portland!'
-        },
-        {
-            'author': {'username': 'Susan'},
-            'body': 'The Avengers movie was so cool!'
-        },
-        {
-            'author': {'username': 'Ипполит'},
-            'body': 'Какая гадость эта ваша заливная рыба!!'
-        }
-    ]
+    form = PostForm()
+    if form.validate_on_submit():
+        post = Post(body=form.post.data, author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash('ghbdtn')
+        return redirect(url_for('index'))
+    posts = current_user.followed_posts().all()
     return render_template('index.html', title='Home', posts=posts)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -125,3 +118,9 @@ def unfollow(username):
     db.session.commit()
     flash('You are not following {}.'.format(username))
     return redirect(url_for('user', username=username))
+
+@app.route('/explore')
+@login_required
+def explore():
+    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    render_template('index.html', title='Explore', posts=posts)
